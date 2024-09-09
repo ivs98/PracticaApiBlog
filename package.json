@@ -1,0 +1,34 @@
+{
+  "name": "apiblog",
+  "version": "1.0.0",
+  "description": "crear una API RESTful simple con operaciones CRUD básicas para una plataforma de blogs personales",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ivs98/PracticasInma.git"
+  },
+  "keywords": [
+    "api",
+    "blog",
+    "crear",
+    "leer",
+    "actualizar",
+    "eliminar",
+    "gestión",
+    "productividad",
+    "nodejs"
+  ],
+  "author": "Inma",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ivs98/PracticasInma/issues"
+  },
+  "homepage": "https://github.com/ivs98/PracticasInma#readme",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
