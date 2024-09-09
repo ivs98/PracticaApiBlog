@@ -29,6 +29,9 @@
   },
   "homepage": "https://github.com/ivs98/PracticasInma#readme",
   "dependencies": {
-    "express": "^4.19.2"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0",
+    "sequelize": "^6.37.3"
   }
 }

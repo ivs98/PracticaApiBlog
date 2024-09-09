@@ -1,9 +1,11 @@
 // index.js
 const express = require('express');
 const bodyParser = require('body-parser'); //no lo entiendo
+const sequelize = require('./config/database');
+const Post = require('./models/Post');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // Middleware para parsear el cuerpo de las solicitudes
 app.use(bodyParser.json());
@@ -16,7 +18,8 @@ app.listen(port, () => {
   console.log(`Aplicación escuchando en http://localhost:${port}`);
 });
 
-app.post('/blog', (req, res) => {
+// Endpoint para crear una nueva publicación de blog
+app.post('/blog', async (req, res) => {
     const { title, content } = req.body;
 
     if (!title || !content) {
@@ -24,8 +27,21 @@ app.post('/blog', (req, res) => {
     }
 
     // Aquí puedes añadir la lógica para guardar la publicación en una base de datos
+    try {
+      const newPost = await Post.create({
+        title,
+        content,
+        category,
+        tags
+      });
+  
+      res.status(201).json(newPost);
+    } catch (error) {
+      res.status(500).json({ error: 'Error creating post' });
+    }
+
     // Por ahora, simplemente devolveremos la publicación creada
-    const newPost = {
+    /* const newPost = {
         id: Date.now(), // Generar un ID único
         title,
         content,
@@ -33,7 +49,16 @@ app.post('/blog', (req, res) => {
         updatedAt: new Date()
     };
 
-    res.status(201).json(newPost);
+    res.status(201).json(newPost); */
+});
+
+// Sincronizar el modelo con la base de datos y luego iniciar el servidor
+sequelize.sync().then(() => {
+  app.listen(port, () => {
+    console.log(`Servidor escuchando en http://localhost:${port}`);
+  });
+}).catch(error => {
+  console.error('Unable to connect to the database:', error);
 });
 
 app.listen(port, () => {
