@@ -1,11 +1,10 @@
-// index.js
 const express = require('express');
-const bodyParser = require('body-parser'); //no lo entiendo
+const bodyParser = require('body-parser');
 const sequelize = require('./config/database');
 const Post = require('./models/Post');
 
 const app = express();
-const port = 3001;
+const port = 3002;
 
 // Middleware para parsear el cuerpo de las solicitudes
 app.use(bodyParser.json());
