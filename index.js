@@ -1,64 +1,35 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const sequelize = require('./config/database');
-const Post = require('./models/Post');
+import express from 'express';
+import morgan from 'morgan';
+import routerPosts from './routes/posts.routes.js';
+//import mysql2 from './config/database';
 
 const app = express();
-const port = 3002;
+const port = 3000;
 
 // Middleware para parsear el cuerpo de las solicitudes
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(morgan('dev')); // muestra las solicitudes HTTP en la consola
 
 app.get('/', (req, res) => {
   res.send('¡Hola, mundo!');
 });
 
-app.listen(port, () => {
-  console.log(`Aplicación escuchando en http://localhost:${port}`);
-});
 
 // Endpoint para crear una nueva publicación de blog
-app.post('/blog', async (req, res) => {
-    const { title, content } = req.body;
-
-    if (!title || !content) {
-        return res.status(400).json({ error: 'El título y el contenido de la entrada son campos obligatorios.' });
-    }
-
-    // Aquí puedes añadir la lógica para guardar la publicación en una base de datos
-    try {
-      const newPost = await Post.create({
-        title,
-        content,
-        category,
-        tags
-      });
-  
-      res.status(201).json(newPost);
-    } catch (error) {
-      res.status(500).json({ error: 'Error creating post' });
-    }
-
-    // Por ahora, simplemente devolveremos la publicación creada
-    /* const newPost = {
-        id: Date.now(), // Generar un ID único
-        title,
-        content,
-        createdAt: new Date(),
-        updatedAt: new Date()
-    };
-
-    res.status(201).json(newPost); */
-});
+app.use('/posts', routerPosts);
 
 // Sincronizar el modelo con la base de datos y luego iniciar el servidor
-sequelize.sync().then(() => {
+/* mysql2.getConnection((err, connection) => {
+  if (err) {
+    console.error('Unable to connect to the database:', err);
+    return;
+  }
+  console.log('Connected to the database');
   app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
   });
-}).catch(error => {
-  console.error('Unable to connect to the database:', error);
-});
+  connection.release();
+}); */
 
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
