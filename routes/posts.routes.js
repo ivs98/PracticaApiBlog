@@ -7,8 +7,6 @@ const router = Router();
 router.post('/', async (req, res) => {
     const { title, content, category, tags } = req.body;
 
-    //console.log(title, content, category, tags);
-
     //comprobaciones de los datos que llegan
     if (!validateData(title, content, category, tags)) {
         return res.status(400).send("Bad Request"); //cuando los datos no son correctos, hay errores de validación
@@ -59,8 +57,6 @@ router.post('/', async (req, res) => {
             //Select para obtener los datos del post introducido
             const [rows] = await connection.execute('SELECT * FROM post WHERE post.id = ?', [postId]);
            
-            //console.log(rows[0]);
-            
             return res.status(201).json({
                 id: rows[0].id,
                 title: rows[0].title,
@@ -100,12 +96,12 @@ router.put('/:id_post', async (req, res) => {
         await connection.beginTransaction();
 
         //Actualizar post
-        const [result] = await connection.query(
+        await connection.query(
             'UPDATE post SET title = ?, content = ?, category = ? WHERE id = ?',
             [title, content, category, id_post]
         );
 
-        //Borrar tags
+        //borrar tags
         await connection.query(
             'DELETE FROM post_tag WHERE id_post = ?',
             [id_post]
@@ -121,9 +117,7 @@ router.put('/:id_post', async (req, res) => {
             [id_post]
         );
            
-        //console.log(rows[0]);
-        
-        return res.status(201).json({
+        return res.status(200).json({
             id: rows[0].id,
             title: rows[0].title,
             content: rows[0].content,
@@ -138,16 +132,136 @@ router.put('/:id_post', async (req, res) => {
         console.error('Error al conectar a la base de datos:', error);
         return res.status(400).send("Bad Request");
     }
-
-    return res.status(200).send("OK"); //necesario?
 });
 
-//TAREA 3: Borrar una entrada de blog
+//TAREA 3: Borrar un post del blog
+router.delete('/:id_post', async (req, res) => {
+    const { id_post } = req.params;
 
-//TAREA 4: Obtener una entrada de blog
+    if (!validateId(id_post)) {
+        return res.status(400).send("Bad Request"); //cuando el dato no es correcto
+    }
 
-//TAREA 5: Obtener todas las entradas de blog
+    let connection;
+    try {
+        connection = await connectDB();
+        await connection.beginTransaction();
 
+        //comprobar que el id existe en la bbdd
+        await checkId(connection, id_post);
+
+        //borrar post (delete cascade para los tags)
+        await connection.query(
+            'DELETE FROM post WHERE id = ?',
+            [id_post]
+        );
+
+        await connection.commit();
+
+        return res.status(204).send("No Content");
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error al conectar a la base de datos:', error);
+        return res.status(400).send("Bad Request");
+    }
+});
+
+
+//TAREA 4: Obtener un post del blog
+router.get('/:id_post', async (req, res) => {
+    const { id_post } = req.params;
+
+    if (!validateId(id_post)) {
+        return res.status(400).send("Bad Request"); //cuando el dato no es correcto
+    }
+
+    let connection;
+    try {
+        connection = await connectDB();
+        //await connection.beginTransaction();
+
+        //comprobar que el id existe en la bbdd
+        await checkId(connection, id_post);
+
+        //Select para obtener los datos del post introducido en la ruta
+        const [rows] = await connection.execute('SELECT * FROM post WHERE post.id = ?', 
+            [id_post]
+        );
+
+        //Select para obtener los tags del post
+        let tags = await getTags(connection, id_post);
+        
+        return res.status(200).json({
+            id: rows[0].id,
+            title: rows[0].title,
+            content: rows[0].content,
+            category: rows[0].category,              
+            tags,
+            createdAt: rows[0].createdAt,
+            updatedAt: rows[0].updatedAt
+        });
+
+    } catch (error) {
+        //await connection.rollback();
+        console.error('Error al conectar a la base de datos:', error);
+        return res.status(400).send("Bad Request");
+    }
+});
+
+//TAREA 5: Obtener todas las entradas de blog + filtros en la búsqueda
+router.get('/', async (req, res) => {
+    const { term } = req.query;
+
+    let connection;
+    try {
+        connection = await connectDB();
+
+        let query = 'SELECT * FROM post';
+        let queryParams = [];
+
+        /**
+         *  La ruta ahora acepta un parámetro de consulta term que se utiliza para buscar en 
+         * los campos de título, contenido o categoría.
+         */
+        if (term) {
+            query += ' WHERE title LIKE ? OR content LIKE ? OR category LIKE ?';
+            const wildcardTerm = `%${term}%`;
+            queryParams = [wildcardTerm, wildcardTerm, wildcardTerm];
+        }
+
+        // Select para obtener todos los posts o los posts filtrados
+        const [rows] = await connection.execute(query, queryParams);
+
+        let posts = [];
+        for (const row of rows) {
+            let tags = await getTags(connection, row.id);
+
+            //vamos añadiendo los posts al array
+            posts.push({
+                id: row.id,
+                title: row.title,
+                content: row.content,
+                category: row.category,              
+                tags,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt
+            });
+        }
+
+        //devolvemos el array de posts
+        return res.status(200).json(posts);
+
+    } catch (error) {
+        console.error('Error al conectar a la base de datos:', error);
+        return res.status(500).send("Internal Server Error");
+
+    } finally {
+        if (connection) {
+            await connection.end();
+        }
+    }
+});
 
 //FUNCIONES:
 
@@ -184,7 +298,6 @@ function validateData(title, content, category, tags) {
         }
     }
 
-    //si todo es correcto
     return true;
 }
 
@@ -236,7 +349,43 @@ async function insertTags(connection, tagsArray, id_post) {
     }
 }
 
-//Conectar a la base de datos
+ // función comprobar que el id existe en la bbdd
+async function checkId(connection, id_post) {
+    const [result] = await connection.query(
+        'SELECT * FROM post WHERE id = ?',
+        [id_post]
+    );
+
+    //compruebo la longitud del select, si no existe, false
+    if (result.length === 0) {
+        return false;
+    }
+
+    return true;
+}
+
+//función para obtener los tags de un post
+async function getTags(connection, id_post) {
+    const [result] = await connection.query(
+        'SELECT tag FROM tag JOIN post_tag ON tag.id = post_tag.id_tag WHERE post_tag.id_post = ?',
+        [id_post]
+    );
+    /**
+     * La función getTags ejecuta una consulta a la base de datos para obtener los tags.
+    La consulta devuelve un array de objetos, donde cada objeto representa una fila de la tabla de tags.
+    La función map se utiliza para transformar este array de objetos en un array de valores de la propiedad tag de cada objeto.
+    */
+    return result.map(row => row.tag);
+}
+
+//Borrar tags
+/* async function deleteTags(connection, id_post) {
+    await connection.query(
+        'DELETE FROM post_tag WHERE id_post = ?',
+        [id_post]
+    );    
+} */
+
 //Insertar en la base de datos
 //Actualizar en la base de datos
 //Borrar en la base de datos
