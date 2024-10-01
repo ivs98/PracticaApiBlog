@@ -255,13 +255,9 @@ router.get('/', async (req, res) => {
     } catch (error) {
         console.error('Error al conectar a la base de datos:', error);
         return res.status(500).send("Internal Server Error");
-
-    } finally {
-        if (connection) {
-            await connection.end();
-        }
     }
 });
+
 
 //FUNCIONES:
 
@@ -349,7 +345,12 @@ async function insertTags(connection, tagsArray, id_post) {
     }
 }
 
- // función comprobar que el id existe en la bbdd
+ /**
+  * Función para comprobar que el id existe en la bbdd
+  * @param {mysql.Connection} connection 
+  * @param {number} id_post 
+  * @returns {Promise<boolean>}
+  */
 async function checkId(connection, id_post) {
     const [result] = await connection.query(
         'SELECT * FROM post WHERE id = ?',
@@ -364,32 +365,31 @@ async function checkId(connection, id_post) {
     return true;
 }
 
-//función para obtener los tags de un post
+/**
+ * Función para obtener los tags de un post
+ * @param {mysql.Connection} connection 
+ * @param {number} id_post 
+ * @returns {Promise<Array<string>>}
+ */
 async function getTags(connection, id_post) {
     const [result] = await connection.query(
         'SELECT tag FROM tag JOIN post_tag ON tag.id = post_tag.id_tag WHERE post_tag.id_post = ?',
         [id_post]
     );
     /**
-     * La función getTags ejecuta una consulta a la base de datos para obtener los tags.
-    La consulta devuelve un array de objetos, donde cada objeto representa una fila de la tabla de tags.
-    La función map se utiliza para transformar este array de objetos en un array de valores de la propiedad tag de cada objeto.
+        La función getTags ejecuta una consulta a la base de datos para obtener los tags.
+        La consulta devuelve un array de objetos, donde cada objeto representa una fila de la tabla de tags.
+        La función map se utiliza para transformar este array de objetos en un array de valores de la propiedad tag de cada objeto.
     */
     return result.map(row => row.tag);
 }
 
-//Borrar tags
+//Borrar tags:
 /* async function deleteTags(connection, id_post) {
     await connection.query(
         'DELETE FROM post_tag WHERE id_post = ?',
         [id_post]
     );    
 } */
-
-//Insertar en la base de datos
-//Actualizar en la base de datos
-//Borrar en la base de datos
-//Obtener de la base de datos
-
 
 export default router;
